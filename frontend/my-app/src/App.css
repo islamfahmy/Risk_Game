@@ -1,0 +1,37 @@
+.App {
+  position: relative;
+  top: 10px;
+  left:350px;
+  background-image: url('./media/egypt.png');
+  background-position: center;
+  background-size: cover;
+  height: 550px;
+  width:600px;
+   
+}
+.but{
+  position: relative;
+  left:290px;
+  top:0px;
+  font-size: 1px;
+}
+.App-logo {
+
+  height: 80vmin;
+  width:90vmin;
+}
+
+
+.App-header {
+  min-height: 10vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+}
+
