@@ -1,0 +1,15 @@
+<script >
+const socket = new WebSocket('ws://localhost:8080')
+socket.addEventListener('open',function(event){
+ socket.send('Hello server !')
+socket.send("hello ya 5awal")
+
+})
+socket.addEventListener('close',function(event){
+ socket.send('bye bye donkey')
+})
+
+socket.addEventListener('message',function(event){
+	console.log("message ",event.data)
+	})
+</script>

@@ -5,10 +5,12 @@ import map from './map'
 import counterReducer from './Reducer/MapReducer'
 import { createStore } from 'redux'
 import { useSelector, useDispatch } from 'react-redux'
-var coords = [];
-  
+import Websocket from 'react-websocket'
 const App=()=> {
-   
+  const socket = new WebSocket('ws://localhost:8080')
+  socket.addEventListener('message',function(event){
+  console.log("message ",event.data)
+  })
   const dispatch = useDispatch()
   const cities = useSelector(state => state)
   const store = createStore(counterReducer);
