@@ -11,12 +11,19 @@ const  mapReducer=(state=[] , action) =>
    }
    case "COLOR":
    	{ 
-   		return state.map(m=>{
-      	if(m.id===action.data.id) 
-      		m.color=action.data.color;
-      	 return m 
-      })
+      var i ;
+      for(i=0;i<state.length;i++)
+        state[i].color=action.data[i];
+   		return state.map(s=>s)
    	}
+    case "COLOR_ONE" :
+    { console.log(action.data)
+      return state.map(s=>{
+        if(s.id===action.data.id)
+         s.color=action.data.color 
+        return s })
+      
+    }
   }
 }
 export default mapReducer;

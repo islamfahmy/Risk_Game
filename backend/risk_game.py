@@ -5,6 +5,10 @@
 
 
 import random
+import asyncio
+import websockets
+import json
+import time 
 
 
 # In[249]:
@@ -135,7 +139,7 @@ class Agent:
                 self.owned_territories.remove(self.game_state.last_change)
                 last_change_counter=0
         #print(str(self.color)+" "+str(len(self.owned_territories)))
-        if len(self.owned_territories)==0 or len(self.owned_territories)==27 or self.game_state.last_change_counter>15:
+        if len(self.owned_territories)==0 or len(self.owned_territories)==27 or self.game_state.last_change_counter>400:
             self.game_state.end=True
     def place_new_armies(self):
         pass
@@ -258,19 +262,63 @@ class Pacifist(Passive):
 
 # In[266]:
 
-
 new_game=Game("Egypt")
 new_game.startGame()
 pacifist= Pacifist(color=-1,game_state=new_game)
-agressive= Passive(color=1,game_state=new_game)
+agressive= Agressive(color=1,game_state=new_game)
 turn = 0
-
-while new_game.end==False:
+x=[]
+i=0;
+for ter in new_game.territories:
+     if ter==None :
+      continue 
+     if ter.color==0 :
+        x.append("white")
+     if ter.color==1 :
+        x.append("blue")
+     if ter.color==-1 :
+        x.append("red")
+     i+=1
+async def server(websocket,path) :
+        
+  await websocket.send(json.dumps({
+    'type':"init",
+    "data":x
+    })) 
+  turn = 0
+  while new_game.end==False:
     if turn==0:
         game_state=agressive.action()
     else:
         game_state=pacifist.action()
     turn=(turn+1)%2
+    if new_game.last_change==None :
+     continue 
+    color = "a";
+
+    if new_game.last_change.color==0 :
+     color="white";
+    if new_game.last_change.color==1 :
+      color="blue"
+    if new_game.last_change.color==-1 :
+      color="red" 
+    print(new_game.last_change)
+    await websocket.send(json.dumps({
+    'type':"color",
+    "data":{
+    "id":new_game.last_change.tid,
+    "color":color
+    }
+    })) 
+    time.sleep(10)
+
+start_server = websockets.serve(server,"localhost",8080)
+asyncio.get_event_loop().run_until_complete(start_server);
+asyncio.get_event_loop().run_forever()
+
+
+
+
     #print(new_game.end)
 
 

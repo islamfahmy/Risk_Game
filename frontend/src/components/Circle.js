@@ -1,6 +1,5 @@
 const Circle = props => {
     const { x, y, count, color ,r} = props;
-    console.log(color)
     const styler ={
     	position: "relative",
     	backgroundColor:color,

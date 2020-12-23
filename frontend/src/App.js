@@ -5,17 +5,23 @@ import map from './map'
 import counterReducer from './Reducer/MapReducer'
 import { createStore } from 'redux'
 import { useSelector, useDispatch } from 'react-redux'
-import Websocket from 'react-websocket'
-const App=()=> {
-  const socket = new WebSocket('ws://localhost:8080')
+const App=({socket})=> {
   socket.addEventListener('message',function(event){
-  console.log("message ",event.data)
+   console.log("message : ",event.data)
+   if(JSON.parse(event.data).type== "init")
+    dispatch({type:'COLOR',data:JSON.parse(event.data).data})
+   
+   else if(JSON.parse(event.data).type=="color")
+    dispatch({type:'COLOR_ONE',data:JSON.parse(event.data).data});
+    
+
   })
   const dispatch = useDispatch()
   const cities = useSelector(state => state)
   const store = createStore(counterReducer);
  if(!cities)
     dispatch({ type: 'INIT' })
+  
   return (
     <div className="App" >
     {cities&&cities.map(m=><Circle key = {m.id} x={m.x} y= {m.y} color={m.color} r={m.r} count ={m.id} /> )}
