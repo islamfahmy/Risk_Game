@@ -29,6 +29,22 @@ class Territory:
         self.tid=tid
     def __str__(self):
         return "Territory ID: "+str(self.tid)+", color: "+str(self.color)+", heuristic: "+str(self.heuristic)+", armies: "+str(self.armies)
+    def BST(self):
+      sum=0
+      for ter in self.adjacent_territories_obj:
+        if(ter.color!=self.color):
+          sum+=ter.armies
+      return sum
+    def BSR(self):
+      return self.BST()/self.armies
+    def NBSR(self):
+      sigmaBSR = 0
+      for ter in self.adjacent_territories_obj:
+        if(ter.color==self.color):
+          sigmaBSR+=ter.BSR()
+      return self.BSR()/(self.BSR()+sigmaBSR)
+     
+
 
 
 # In[ ]:
@@ -46,6 +62,8 @@ class Game:
     state=0
     last_change=None
     last_change_counter=0
+    last_armies=None 
+    last_attacker= None 
     end=False
     def __init__(self,gameMap="Egypt",territories=[],state=0):
         self.gameMap=gameMap
@@ -139,7 +157,12 @@ class Agent:
                 self.owned_territories.remove(self.game_state.last_change)
                 last_change_counter=0
         #print(str(self.color)+" "+str(len(self.owned_territories)))
-        if len(self.owned_territories)==0 or len(self.owned_territories)==27 or self.game_state.last_change_counter>400:
+        if len(self.owned_territories)==0 or len(self.owned_territories)==27 :
+            print("game endeed")
+            print(str(len(self.owned_territories)))
+            print(str(len(self.owned_territories)))
+            print(str(self.game_state.last_change_counter))
+            
             self.game_state.end=True
     def place_new_armies(self):
         pass
@@ -165,6 +188,7 @@ class Agressive(Agent):
         new_armies=max(3,int((len(self.owned_territories)/3)))
         max_territory=self.get_crowdest_territory()
         max_territory.armies+=new_armies  
+        self.game_state.last_armies=max_territory;
     def action(self):
         self.get_new_state()
         if self.game_state.end==True:
@@ -184,6 +208,7 @@ class Agressive(Agent):
                         self.game_state.last_change=k
                         i=self.owned_territories[-1]
                         self.owned_territories.append(k)
+                        self.game_state.last_attacker=i
                         return;
         
         self.game_state.last_change=None
@@ -201,7 +226,7 @@ class Passive(Agent):
             if i.armies<m:
                 m=i.armies
                 current_territory=i
-        return current_territory
+        return current_territory    
     def __str__(self):
         return "Passive Agent with color: "+str(self.color)+", number of owned territories: "+str(len(self.owned_territories))
     
@@ -217,10 +242,103 @@ class Passive(Agent):
         min_territory=self.get_least_territory()
         min_territory.armies+=new_armies  
         self.game_state.last_change=None
-   
+        self.game_state.last_armies=min_territory
 
 
 # In[254]:
+class Greedy(Agent) :
+    def __str__(self):
+        return "Pacifist Agent with color: "+str(self.color)+", number of owned territories: "+str(len(self.owned_territories))
+    
+    def defensive(self,ter) :
+        maxown=0 
+        maxenem=0
+        for i in ter.adjacent_territories_obj :
+            if i.color!=self.color :
+                maxenem=max(i.armies,maxenem)
+            else : 
+                maxown=max(i.armies,maxenem)
+        return maxown-maxenem;    
+    def action(self) :
+      self.get_new_state()
+      '''
+      ter = None 
+      valo = 0 
+      for i in self.owned_territories :
+         temp = i.NBSR()
+         print(temp)
+         if temp>valo :
+            print("gowa el if"+temp)
+            ter = i 
+            valo = i.NBSR
+
+      new_armies=max(3,int((len(self.owned_territories)/3)))
+      ter.armies+=new_armies'''
+      maxTer= None 
+      val = -9999999
+      a=0
+      attacker = None ;
+      for i in self.owned_territories :
+        for j in i.adjacent_territories_obj :
+         if j.color == self.color :
+             continue
+         if i.armies>j.armies :
+            temp = self.defensive(j)
+            if temp>val : 
+                a=i.armies
+                val = temp 
+                maxTer=j
+                attacker=i 
+      self.game_state.last_change=None
+      if maxTer == None :
+       return 
+      maxTer.color=self.color
+      maxTer.armies=a- maxTer.armies+max(3,int((len(self.owned_territories)/3)))-1
+      i.armies=1
+      self.game_state.last_change=maxTer 
+      self.game_state.last_attacker=attacker
+
+class Astar(Greedy):
+    
+    def action(self) :
+      self.get_new_state()
+      '''
+      ter = None 
+      valo = 0 
+      for i in self.owned_territories :
+         temp = i.NBSR()
+         print(temp)
+         if temp>valo :
+            print("gowa el if"+temp)
+            ter = i 
+            valo = i.NBSR
+
+      new_armies=max(3,int((len(self.owned_territories)/3)))
+      ter.armies+=new_armies'''
+      maxTer= None 
+      val = -9999999
+      a=0
+      for i in self.owned_territories :
+        for j in i.adjacent_territories_obj :
+         if j.color == self.color :
+             continue
+         if i.armies>j.armies :
+            temp = self.defensive(j)
+            if temp>val : 
+                a=i.armies
+                val = temp 
+                maxTer=j 
+      self.game_state.last_change=None
+      if maxTer == None :
+       return 
+      maxTer.color=self.color
+      maxTer.armies=a- maxTer.armies+max(3,int((len(self.owned_territories)/3)))
+      self.game_state.last_change=maxTer 
+      
+
+
+
+    
 
 
 class Pacifist(Passive):
@@ -265,13 +383,15 @@ class Pacifist(Passive):
 new_game=Game("Egypt")
 new_game.startGame()
 pacifist= Pacifist(color=-1,game_state=new_game)
-agressive= Agressive(color=1,game_state=new_game)
+agressive= Passive(color=1,game_state=new_game)
 turn = 0
 x=[]
 i=0;
+armi =[]
 for ter in new_game.territories:
      if ter==None :
       continue 
+     armi.append(ter.armies)
      if ter.color==0 :
         x.append("white")
      if ter.color==1 :
@@ -280,12 +400,14 @@ for ter in new_game.territories:
         x.append("red")
      i+=1
 async def server(websocket,path) :
-        
   await websocket.send(json.dumps({
     'type':"init",
-    "data":x
+    "data":{"data":x,
+    "armies":armi
+    }
     })) 
   turn = 0
+  cnt = 0
   while new_game.end==False:
     if turn==0:
         game_state=agressive.action()
@@ -295,27 +417,48 @@ async def server(websocket,path) :
     if new_game.last_change==None :
      continue 
     color = "a";
-
     if new_game.last_change.color==0 :
      color="white";
     if new_game.last_change.color==1 :
       color="blue"
     if new_game.last_change.color==-1 :
       color="red" 
-    print(new_game.last_change)
+    print("id "+str(new_game.last_change.tid)+" "+"color: "+str(color))
+    if new_game.last_armies!=None :
+        await websocket.send(json.dumps({
+         'type':"army",
+         "data":{
+         "id":new_game.last_armies.tid,
+         "armies":new_game.last_armies.armies
+        }
+        }))
+    if new_game.last_attacker!=None :
+        await websocket.send(json.dumps({
+         'type':"army",
+         "data":{
+         "id":new_game.last_attacker.tid,
+         "armies":new_game.last_attacker.armies
+        }
+        }))
+    
+
     await websocket.send(json.dumps({
+    'id':cnt,
     'type':"color",
     "data":{
     "id":new_game.last_change.tid,
-    "color":color
+    "color":color,
+    "armies":new_game.last_change.armies
     }
-    })) 
-    time.sleep(10)
+    }))
+    cnt+=1 
+    time.sleep(0.5)
+  print("55555")
+  return  
 
 start_server = websockets.serve(server,"localhost",8080)
 asyncio.get_event_loop().run_until_complete(start_server);
 asyncio.get_event_loop().run_forever()
-
 
 
 
