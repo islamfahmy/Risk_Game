@@ -7,7 +7,7 @@ import { useSelector, useDispatch, } from 'react-redux'
 
 let socket = null
 const App=()=> {
-    
+    const[action,setAction]=useState("");
     if(!socket)
      socket= new WebSocket('ws://localhost:8080')
   // useEffect(() => {
@@ -21,8 +21,10 @@ const App=()=> {
    else if(JSON.parse(event.data).type==="color")
     dispatch({type:'COLOR_ONE',data:JSON.parse(event.data).data});
   
-    else if(JSON.parse(event.data).type==="army")
+   else if(JSON.parse(event.data).type==="army")
     dispatch({type:'CHANGE_ARMY',data:JSON.parse(event.data).data});
+   else if(JSON.parse(event.data).type==="string")
+    setAction(JSON.parse(event.data).data) 
   }
  
     //})
@@ -32,13 +34,20 @@ const App=()=> {
     dispatch({ type: 'INIT' })
   
   return (
+    <div>
+   
+      <t1>
+        {action}
+      </t1>
     <div className="App" >
+
     {cities&&cities.map(m=><Circle key = {m.id} x={m.x} y= {m.y} color={m.color} r={m.r} count ={m.c} /> )}
     <div className="but"> 
     
     </div>
     </div>
-  );
+     </div>
+  )
 }
 
 export default App;
