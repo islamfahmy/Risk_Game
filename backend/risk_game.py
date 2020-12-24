@@ -32,9 +32,9 @@ class Territory:
     def BST(self):
       sum=0
       for ter in self.adjacent_territories_obj:
-        if(ter.color!=self.color):
+        if(ter.color!=self.color and ter.color!=0):
           sum+=ter.armies
-      return sum
+      return max(0.0001,sum)
     def BSR(self):
       return self.BST()/self.armies
     def NBSR(self):
@@ -262,27 +262,22 @@ class Greedy(Agent) :
         return maxown-maxenem;    
     def action(self) :
       self.get_new_state()
-      '''
-      ter = None max(3,int((len(self.owned_territories)/3)))
+      ter = None
       valo = 0 
       for i in self.owned_territories :
          temp = i.NBSR()
-         print(temp)
          if temp>valo :
-            print("gowa el if"+temp)
+            
             ter = i 
-            valo = i.NBSR
+            valo = i.NBSR()
 
       new_armies=max(3,int((len(self.owned_territories)/3)))
-      ter.armies+=new_armies'''
+      ter.armies+=new_armies
       maxTer= None 
       val = -9999999
-      a=0
       attacker = None ;
-      ra = random.randrange(0,len(self.owned_territories)-1)
-      self.owned_territories[ra].armies+=max(3,int((len(self.owned_territories)/3)))
-      print("placed " +str(self.owned_territories[ra].armies))
-      self.game_state.last_armies=self.owned_territories[ra]
+      a=0
+      self.game_state.last_armies=ter
       for i in self.owned_territories :
         for j in i.adjacent_territories_obj :
          if j.color == self.color :
@@ -321,27 +316,24 @@ class Astar(Agent):
         return maxown-maxenem;    
     def action(self) :
       self.get_new_state()
-      '''
-      ter = None max(3,int((len(self.owned_territories)/3)))
+      ter = None
       valo = 0 
       for i in self.owned_territories :
          temp = i.NBSR()
-         print(temp)
          if temp>valo :
-            print("gowa el if"+temp)
+            
             ter = i 
-            valo = i.NBSR
+            valo = i.NBSR()
 
       new_armies=max(3,int((len(self.owned_territories)/3)))
-      ter.armies+=new_armies'''
-      maxTer= None 
+      ter.armies+=new_armies
+      val=0
+      self.game_state.last_armies=ter
+      maxTer=None
       val = -9999999
-      a=0
       attacker = None ;
-      ra = random.randrange(0,len(self.owned_territories)-1)
-      self.owned_territories[ra].armies+=max(3,int((len(self.owned_territories)/3)))
-      print("placed " +str(self.owned_territories[ra].armies))
-      self.game_state.last_armies=self.owned_territories[ra]
+      a=0
+     
       for i in self.owned_territories :
         for j in i.adjacent_territories_obj :
          if j.color == self.color :
@@ -410,7 +402,7 @@ class Pacifist(Passive):
 
 new_game=Game("Egypt")
 new_game.startGame()
-pacifist= Astar(color=-1,game_state=new_game)
+pacifist= Greedy(color=-1,game_state=new_game)
 agressive= Astar(color=1,game_state=new_game)
 turn = 0
 x=[]
