@@ -9,7 +9,7 @@ import asyncio
 import websockets
 import json
 import time 
-
+from types import SimpleNamespace
 
 # In[249]:
 
@@ -428,11 +428,20 @@ async def server(websocket,path) :
     })) 
   turn = 0
   cnt = 0
+  human = 1
   while new_game.end==False:
     if turn==0:
         game_state=agressive.action()
     else:
-        game_state=pacifist.action()
+        if human == 0 :
+         game_state=pacifist.action()
+        else :
+         data = await websocket.recv()
+         z = json.loads(data, object_hook=lambda d: SimpleNamespace(**d))
+         no_of_armies = z.armies
+         attacker_id=z.attacker
+         attacked_id=z.attacked
+
     turn=(turn+1)%2
     if new_game.last_change==None :
      continue 

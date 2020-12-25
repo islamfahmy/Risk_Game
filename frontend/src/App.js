@@ -8,6 +8,8 @@ import { useSelector, useDispatch, } from 'react-redux'
 let socket = null
 const App=()=> {
     const[action,setAction]=useState("");
+    const[attack,setAttack]=useState("");
+    const[no,setNo]=useState("");
     if(!socket)
      socket= new WebSocket('ws://localhost:8080')
   // useEffect(() => {
@@ -26,7 +28,19 @@ const App=()=> {
    else if(JSON.parse(event.data).type==="string")
     setAction(JSON.parse(event.data).data) 
   }
- 
+  const Click=(x)=>
+    {
+      var temp ={
+  attacker:attack,
+attacked:x,
+armies:no
+      };
+      socket.send(JSON.stringify(temp))
+    }
+    const handleSubmit = (evt) => {
+      evt.preventDefault();
+  }
+   
     //})
   const cities = useSelector(state => state)
   const store = createStore(counterReducer);
@@ -35,13 +49,26 @@ const App=()=> {
   
   return (
     <div>
-   
+      <label>
+       atacker
+        <input
+          type="text"
+          onChange={e => setAttack(e.target.value)}
+        />
+      </label>
+        <label>
+    no:    <input
+          type="text"
+          onChange={e => setNo(e.target.value)}
+        />
+      </label>
+    
       <t1>
         {action}
       </t1>
     <div className="App" >
 
-    {cities&&cities.map(m=><Circle key = {m.id} x={m.x} y= {m.y} color={m.color} r={m.r} count ={m.c} /> )}
+    {cities&&cities.map(m=><Circle key = {m.id} x={m.x} y= {m.y} color={m.color} Click={Click} r={m.r} id={m.id} count ={m.c} /> )}
     <div className="but"> 
     
     </div>

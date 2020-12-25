@@ -1,5 +1,6 @@
+
 const Circle = props => {
-    const { x, y, count, color ,r} = props;
+    const { x, y, count, color ,r,id,Click} = props;
     const styler ={
     	position: "relative",
     	backgroundColor:color,
@@ -9,7 +10,7 @@ const Circle = props => {
     	fontSize: r, 
     }
     return <div>
-    	<button style={styler}>
+    	<button style={styler} onClick= {()=>Click(id)}>
     		{count}
     	</button>
     </div>
