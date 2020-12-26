@@ -10,6 +10,7 @@ const App=()=> {
     const[action,setAction]=useState("");
     const[attack,setAttack]=useState("");
     const[no,setNo]=useState("");
+    const[added,setAdded]=useState("");
     if(!socket)
      socket= new WebSocket('ws://localhost:8080')
   // useEffect(() => {
@@ -33,7 +34,9 @@ const App=()=> {
       var temp ={
   attacker:attack,
 attacked:x,
-armies:no
+armies:no,
+add:added
+
       };
       socket.send(JSON.stringify(temp))
     }
@@ -60,6 +63,12 @@ armies:no
     no:    <input
           type="text"
           onChange={e => setNo(e.target.value)}
+        />
+      </label>
+       <label>
+       put armies:    <input
+          type="text"
+          onChange={e => setAdded(e.target.value)}
         />
       </label>
     

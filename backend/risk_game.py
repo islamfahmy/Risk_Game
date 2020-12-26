@@ -10,11 +10,14 @@ import websockets
 import json
 import time 
 from types import SimpleNamespace
+import heapq
 
 # In[249]:
 
 
 class Territory:
+    def __lt__(self,a) :
+      return True ;
     adjacent_territories_indices=[]
     adjacent_territories_obj=[]
     color=0
@@ -36,7 +39,7 @@ class Territory:
           sum+=ter.armies
       return max(0.0001,sum)
     def BSR(self):
-      return self.BST()/self.armies
+      return max(0.0001,self.BST()/self.armies)
     def NBSR(self):
       sigmaBSR = 0
       for ter in self.adjacent_territories_obj:
@@ -299,6 +302,96 @@ class Greedy(Agent) :
       self.owned_territories.append(maxTer)
       self.game_state.last_change=maxTer 
       self.game_state.last_attacker=attacker
+       
+class Human(Agent) :
+    def action(self,no_of_armies,attacker_id,attacked_id,add) :
+     self.get_new_state()
+     new_armies=max(3,int((len(self.owned_territories)/3)))
+     ter=self.game_state.territories[attacker_id]
+     self.game_state.territories[add].armies+=new_armies
+     self.game_state.last_armies=self.game_state.territories[add];
+     self.game_state.territories[attacked_id].color=self.color;
+     self.game_state.territories[attacked_id].armies = no_of_armies-self.game_state.territories[attacked_id].armies;
+     ter.armies =ter.armies-no_of_armies ;
+     self.game_state.last_attacker=ter ;
+     self.game_state.last_change= self.game_state.territories[attacked_id];
+    
+     
+class RealAstar(Agent) :
+    mp=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    mp2=[1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000]
+    h=[]
+    def __str__(self):
+        return "Pacifist Agent with color: "+str(self.color)+", number of owned territories: "+str(len(self.owned_territories))
+    def canAttack(self,ter) : 
+      for i in ter.adjacent_territories_obj :
+        if i.color==self.color and ter.armies+1<i.armies :
+         return True 
+      return False ;
+
+    def defensive(self,ter) :
+        maxown=0 
+        maxenem=0
+        for i in ter.adjacent_territories_obj :
+            if i.color!=self.color :
+                maxenem=max(i.armies,maxenem)
+            else : 
+                maxown=max(i.armies,maxown)
+        return maxown-maxenem;    
+    def action(self) :
+      self.get_new_state()
+      ter = None
+      valo = 0 
+      for i in self.owned_territories :
+         temp = i.NBSR()
+         if temp>valo :
+            
+            ter = i 
+            valo = i.NBSR()
+
+      new_armies=max(3,int((len(self.owned_territories)/3)))
+      ter.armies+=new_armies
+      val=0
+      self.game_state.last_armies=ter
+      maxTer=None
+      val = -9999999
+      attacker = None ;
+      a=0
+     
+      for i in self.owned_territories :
+        for j in i.adjacent_territories_obj :
+         if j.color == self.color :
+             continue
+         if i.armies>j.armies+1 :
+            temp = -self.defensive(j)+3*self.mp[j.tid]
+            if temp < self.mp2[j.tid] :
+              heapq.heappush(self.h, (temp, j))
+              self.mp2[j.tid]=temp
+      while len(self.h) :
+       temp1= heapq.heappop(self.h)
+       if temp1[1].color==self.color or temp1[0]!=self.mp2[temp1[1].tid] :
+        continue
+       if self.canAttack(temp1[1]) :
+        for i in temp1[1].adjacent_territories_obj :
+          if i.armies>temp1[1].armies+1 and i.color ==self.color :
+            maxTer=temp1[1]
+            attacker=i
+            self.mp2[temp1[1].tid]=1000
+
+             
+      self.game_state.last_change=None
+      if maxTer == None :
+       return 
+      self.game_state.attack_action=str(attacker)+" attacked "+str(maxTer)
+      self.mp[maxTer.tid]+=1
+      maxTer.color=self.color
+      maxTer.armies=attacker.armies- maxTer.armies-1
+      attacker.armies=1
+      self.owned_territories.append(maxTer)
+      self.game_state.last_change=maxTer 
+      self.game_state.last_attacker=attacker
+      
+
 
 class Astar(Agent):
     mp=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
@@ -403,7 +496,7 @@ class Pacifist(Passive):
 new_game=Game("Egypt")
 new_game.startGame()
 pacifist= Greedy(color=-1,game_state=new_game)
-agressive= Astar(color=1,game_state=new_game)
+agressive= Agressive(color=1,game_state=new_game)
 turn = 0
 x=[]
 i=0;
@@ -428,7 +521,7 @@ async def server(websocket,path) :
     })) 
   turn = 0
   cnt = 0
-  human = 1
+  human = 0
   while new_game.end==False:
     if turn==0:
         game_state=agressive.action()
@@ -438,9 +531,12 @@ async def server(websocket,path) :
         else :
          data = await websocket.recv()
          z = json.loads(data, object_hook=lambda d: SimpleNamespace(**d))
-         no_of_armies = z.armies
-         attacker_id=z.attacker
-         attacked_id=z.attacked
+         print(z)
+         no_of_armies = int(z.armies)
+         attacker_id=int(z.attacker)
+         attacked_id=int(z.attacked)
+         add=int(z.add)
+         pacifist.action(no_of_armies,attacker_id,attacked_id,add);
 
     turn=(turn+1)%2
     if new_game.last_change==None :
@@ -486,8 +582,7 @@ async def server(websocket,path) :
     }
     }))
     cnt+=1 
-    time.sleep(0.1)
-  print("55555")
+    time.sleep(1)
   return  
 
 start_server = websockets.serve(server,"localhost",8080)
