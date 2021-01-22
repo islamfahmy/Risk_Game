@@ -3,7 +3,7 @@
 
 # In[248]:
 
-
+from copy import deepcopy
 import random
 import asyncio
 import websockets
@@ -143,6 +143,14 @@ class Agent:
     game_state=None
     color=0
     owned_territories=[]
+    def get_owned_territories(self):
+        self.owned_territories=[]
+        for ter in self.game_state.territories[1:]:
+            if ter.color== self.color:
+                self.owned_territories.append(ter)
+        if len(self.owned_territories)==0:
+            self.game_state.end=True
+
     def __init__(self,color,game_state):
         self.color=color
         self.game_state=game_state
@@ -174,6 +182,135 @@ class Agent:
 
 # In[252]:
 
+def generate_states(game, color, armies):
+    place_children = []
+    for ter in game.territories[1:]:
+        if ter.color == color: 
+            child = deepcopy(game) 
+            child.territories[ter.tid].armies += armies
+            place_children.append(child)
+
+    attack_children = []
+    for state in place_children:
+        for ter in state.territories[1:]:
+            if ter.color == color: 
+                for j,adj in enumerate(ter.adjacent_territories_obj):
+                    if adj.color != color: 
+                        if adj.armies +1 < ter.armies: 
+                            child = deepcopy(state)
+                            child.last_attacker_minmax=str(child.territories[ter.tid])
+                            child.last_change_minmax=str(child.territories[ter.tid].adjacent_territories_obj[j])
+                            child.last_attacker=child.territories[ter.tid]
+                            child.last_change=child.territories[ter.tid].adjacent_territories_obj[j]
+                            child.territories[ter.tid].adjacent_territories_obj[j].armies = child.territories[ter.tid].armies - adj.armies -1
+                            child.territories[ter.tid].armies = 1
+                            child.territories[ter.tid].adjacent_territories_obj[j].color = color
+                            attack_children.append({
+                                "parent" : state, 
+                                "state" : child
+                            })
+
+    
+    return attack_children
+
+def updateMap(old, new):
+    for ter in old.territories[1:]:
+        ter.armies=new.territories[ter.tid].armies
+        ter.color=new.territories[ter.tid].color
+        old.last_attacker=new.last_attacker
+        old.last_change=new.last_attacker
+                
+    print(str(new.last_attacker_minmax)+" attacked "+str(new.last_change_minmax))
+                
+class MinmaxAgent(Agent):
+    new_state=None
+    def get_owned_territories(self):
+        self.owned_territories=[]
+        for ter in self.game_state.territories[1:]:
+            if ter.color== self.color:
+                self.owned_territories.append(ter)
+    
+    def compute_state(self,game):
+        game.state=0
+        for ter in game.territories[1:]:
+            game.state+=ter.color
+    def compute_bonus(self,game,color):
+        counter=0
+        for ter in game.territories[1:]:
+            if ter.color == color:
+                counter+=1
+        return max(3,int(counter/3))
+    def compute_heuristic(self,game):
+        counter=0
+        for ter in game.territories[1:]:
+            if ter.color!=self.color:
+                counter+=ter.armies
+        return counter
+    
+    def isGoal(self,game):
+        for ter in game.territories[1:]:
+            if ter.color!=self.color:
+                return False
+        return True
+    def minmax(self,game, armies, depth, alpha, beta, isMaximumTurn,to_return):
+        self.compute_state(game)
+        if depth == 0 or self.isGoal(game):
+            heuristic=self.compute_heuristic(game)
+            return (heuristic,to_return)
+
+        if isMaximumTurn: 
+            maximumHeuristic = (-999999,None)
+            nextStates = generate_states(game, self.color, armies)
+
+            for nextState in nextStates:
+                newArmies = self.compute_bonus(nextState["state"],self.color)
+                nextStateResult = self.minmax(nextState["state"], newArmies, depth-1, alpha, beta, False,nextState["state"])
+                
+                if nextStateResult[0] > maximumHeuristic[0]:
+                    maximumHeuristic = nextStateResult
+
+                
+                if nextStateResult[0] > alpha:
+                    alpha = nextStateResult[0]
+
+                
+                if alpha >= beta:
+                    return (maximumHeuristic[0],to_return) 
+
+            return (maximumHeuristic[0],to_return)
+
+        else: 
+            minimumHeuristic = (999999,None)
+            nextStates =generate_states(game, self.color, armies)
+
+            for nextState in nextStates:
+                newArmies = self.compute_bonus(nextState["state"], self.color)
+                nextStateResult = self.minmax(nextState["state"], newArmies, depth-1, alpha, beta, True, nextState["state"])
+
+                
+                if nextStateResult[0] < minimumHeuristic[0]:
+                    minimumHeuristic = nextStateResult
+
+                
+                if nextStateResult[0] < beta:
+                    beta = nextStateResult[0]
+
+                
+                if alpha >= beta:
+                    return (minimumHeuristic[0],to_return) 
+
+            return (minimumHeuristic[0],to_return)
+    def action(self):
+        self.get_owned_territories()
+        armies=self.compute_bonus(self.game_state,self.color)
+        children=generate_states(self.game_state,color=self.color,armies=armies)
+        depth=1
+        for child in children:
+            out=self.minmax(game=self.game_state,depth=depth,alpha=-999999,beta=999999,isMaximumTurn=True,to_return=child,armies=armies)
+            self.new_state=out[1]
+        
+        updateMap(old=self.game_state,new=self.new_state["state"])
+        
 
 class Agressive(Agent):
     def get_crowdest_territory(self):
@@ -194,7 +331,7 @@ class Agressive(Agent):
         max_territory.armies+=new_armies  
         self.game_state.last_armies=max_territory;
     def action(self):
-        self.get_new_state()
+        self.get_owned_territories()
         if self.game_state.end==True:
             return
         self.place_new_armies()
@@ -235,7 +372,7 @@ class Passive(Agent):
         return "Passive Agent with color: "+str(self.color)+", number of owned territories: "+str(len(self.owned_territories))
     
     def action(self):
-        self.get_new_state()
+        self.get_owned_territories()
         if self.game_state.end==True:
             print("end")
             return
@@ -264,16 +401,14 @@ class Greedy(Agent) :
                 maxown=max(i.armies,maxown)
         return maxown-maxenem;    
     def action(self) :
-      self.get_new_state()
+      self.get_owned_territories()
       ter = None
       valo = 0 
       for i in self.owned_territories :
          temp = i.NBSR()
          if temp>valo :
-            
             ter = i 
             valo = i.NBSR()
-
       new_armies=max(3,int((len(self.owned_territories)/3)))
       ter.armies+=new_armies
       maxTer= None 
@@ -305,7 +440,7 @@ class Greedy(Agent) :
        
 class Human(Agent) :
     def action(self,no_of_armies,attacker_id,attacked_id,add) :
-     self.get_new_state()
+     self.get_owned_territories()
      new_armies=max(3,int((len(self.owned_territories)/3)))
      ter=self.game_state.territories[attacker_id]
      self.game_state.territories[add].armies+=new_armies
@@ -339,7 +474,8 @@ class RealAstar(Agent) :
                 maxown=max(i.armies,maxown)
         return maxown-maxenem;    
     def action(self) :
-      self.get_new_state()
+      
+      self.get_owned_territories()
       ter = None
       valo = 0 
       for i in self.owned_territories :
@@ -408,7 +544,7 @@ class Astar(Agent):
                 maxown=max(i.armies,maxown)
         return maxown-maxenem;    
     def action(self) :
-      self.get_new_state()
+      self.get_owned_territories()
       ter = None
       valo = 0 
       for i in self.owned_territories :
@@ -457,7 +593,7 @@ class Pacifist(Passive):
         return "Pacifist Agent with color: "+str(self.color)+", number of owned territories: "+str(len(self.owned_territories))
     
     def action(self):
-        self.get_new_state()
+        self.get_owned_territories()
         if self.game_state.end==True:
             print("end")
             return
@@ -495,8 +631,8 @@ class Pacifist(Passive):
 
 new_game=Game("Egypt")
 new_game.startGame()
-pacifist= Greedy(color=-1,game_state=new_game)
-agressive= Agressive(color=1,game_state=new_game)
+pacifist= Agressive(color=-1,game_state=new_game)
+agressive= Astar(color=1,game_state=new_game)
 turn = 0
 x=[]
 i=0;
@@ -549,12 +685,12 @@ async def server(websocket,path) :
     if new_game.last_change.color==-1 :
       color="red" 
     print("id "+str(new_game.last_change.tid)+" "+"color: "+str(color))
-    new_game.attack_action+=" and placed "+str(new_game.last_armies.armies)+"new armies in Territory: "+str(new_game.last_armies.tid)
+    if new_game.last_armies :
+     new_game.attack_action+=" and placed "+str(new_game.last_armies.armies)+"new armies in Territory: "+str(new_game.last_armies.tid)
     await websocket.send(json.dumps({
         'type':"string",
          "data":new_game.attack_action+""
         }))
- 
     if new_game.last_armies!=None :
         await websocket.send(json.dumps({
          'type':"army",
@@ -582,9 +718,6 @@ async def server(websocket,path) :
     }
     }))
     cnt+=1 
-    time.sleep(1)
-  return  
-
 start_server = websockets.serve(server,"localhost",8080)
 asyncio.get_event_loop().run_until_complete(start_server);
 asyncio.get_event_loop().run_forever()
